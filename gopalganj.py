@@ -27,12 +27,23 @@ base_tds_1 = 100
 broker="broker.hivemq.com"
 port=1883
 
+sub_message = ""
+
 def on_publish(client,userdata,result):             #create function for callback
     print("data published \n")
     pass
 
 def on_disconnect(client, userdata, rc):
    print("client disconnected ok")
+
+def on_message(client, userdata, message):
+    global sub_message
+    
+    # print("message received " ,str(message.payload.decode("utf-8")))
+    # print("message topic=",message.topic)
+    # print("message qos=",message.qos)
+    # print("message retain flag=",message.retain)
+    sub_message = str(message.payload.decode("utf-8"))
 
 def ConvertTemp(analog_val, calibration_val = 100000):
     R1 = calibration_val
@@ -84,23 +95,34 @@ def cityTemperature(city):
         print("Error in the HTTP request")
         return 22
 
+topic = "DMA/Fish_Farm/Padma_Shrimps"
+
 client= mqtt.Client("8htn30u94tin40")                           #create client object
 client.on_publish = on_publish                          #assign function to callback
 client.on_disconnect = on_disconnect
 client.connect(broker,port, keepalive= 1000)                                 #establish connection
-
-topic = "DMA/Fish_Farm/Padma_Shrimps"
+client.on_message =  on_message
+client.subscribe(topic=topic)
 while True:
-    temp = temp_to_analog(cityTemperature(CITY))
-    msg_0 = "GID:" + GID + ", DID:" + DID0 + ", Analog: " + str(base_pH_0 + random.randint(-5, 5)) + " " + str(base_tds_0 + random.randint(-5, 5)) + " 0 " + str(temp)
-    msg_1 = "GID:" + GID + ", DID:" + DID1 + ", Analog: " + str(base_pH_1 + random.randint(-5, 5)) + " " + str(base_tds_1 + random.randint(-5, 5)) + " 0 " + str(temp)
-    print(msg_0)
-    ret = client.publish(topic=topic, qos=2, payload=msg_0)
-    print(ret)
-    time.sleep(3*60)
-    print(msg_1)
-    ret = client.publish(topic=topic, qos=2, payload=msg_1)
-    print(ret)
-    time.sleep(12*60)
+    # temp = temp_to_analog(cityTemperature(CITY))
+    # msg_0 = "GID:" + GID + ", DID:" + DID0 + ", Analog: " + str(base_pH_0 + random.randint(-5, 5)) + " " + str(base_tds_0 + random.randint(-5, 5)) + " 0 " + str(temp)
+    # msg_1 = "GID:" + GID + ", DID:" + DID1 + ", Analog: " + str(base_pH_1 + random.randint(-5, 5)) + " " + str(base_tds_1 + random.randint(-5, 5)) + " 0 " + str(temp)
+    # print(msg_0)
+    # ret = client.publish(topic=topic, qos=2, payload=msg_0)
+    # print(ret)
+    # time.sleep(3*60)
+    # print(msg_1)
+    # ret = client.publish(topic=topic, qos=2, payload=msg_1)
+    # print(ret)
+    # time.sleep(12*60)
+    if len(sub_message) > 0:
+        print(sub_message)
+        if "GID:8020002203220000, DID:8020012202170002" in sub_message:
+            list_sub_message = list(sub_message)
+            list_sub_message[42] = '3'
+            sub_message = ''.join(list_sub_message)
+            print("to be published: ", sub_message)
+            client.publish(topic=topic, payload=sub_message)
+        sub_message = ""
     client.loop()
     
